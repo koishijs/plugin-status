@@ -1,0 +1,53 @@
+{
+  "name": "koishi-plugin-status",
+  "description": "Show Status of Koishi",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "author": "Shigma <1700011071@pku.edu.cn>",
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint src --ext .ts",
+    "prepack": "tsc -b"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koishijs/plugin-status.git"
+  },
+  "bugs": {
+    "url": "https://github.com/koishijs/plugin-status/issues"
+  },
+  "homepage": "https://koishi.js.org/plugins/other/status",
+  "keywords": [
+    "bot",
+    "qqbot",
+    "cqhttp",
+    "coolq",
+    "chatbot",
+    "koishi",
+    "plugin",
+    "github",
+    "webhook"
+  ],
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.1",
+    "@typescript-eslint/eslint-plugin": "^2.16.0",
+    "@typescript-eslint/parser": "^2.16.0",
+    "eslint": "^6.8.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-import": "^2.20.0",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "koishi-test-utils": "^2.0.0",
+    "typescript": "^3.7.5"
+  },
+  "dependencies": {
+    "cross-spawn": "^7.0.1",
+    "koishi-core": "^1.5.0",
+    "koishi-utils": "^1.0.2"
+  }
+}
