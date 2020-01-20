@@ -1,6 +1,7 @@
 import { App, appList, Context, onStart, onStop } from 'koishi-core'
 import { cpus, totalmem, freemem } from 'os'
-import { memoryUsage, cpuUsage } from 'process'
+import { SpawnOptions } from 'child_process'
+import { resolve } from 'path'
 import { noop } from 'koishi-utils'
 import spawn from 'cross-spawn'
 
@@ -13,7 +14,7 @@ declare module 'koishi-core/dist/app' {
 function getCpuUsage() {
   let totalIdle = 0, totalTick = 0
   const cpuInfo = cpus()
-  const usage = cpuUsage().user
+  const usage = process.cpuUsage().user
 
   for (const cpu of cpuInfo) {
     for (const type in cpu.times) {
@@ -50,15 +51,15 @@ onStop(() => {
 function memoryRate () {
   const totalMemory = totalmem()
   return {
-    app: memoryUsage().rss / totalMemory,
+    app: process.memoryUsage().rss / totalMemory,
     total: 1 - freemem() / totalMemory,
   }
 }
 
-function spawnAsync (command: string) {
+function spawnAsync (command: string, options: SpawnOptions) {
   return new Promise<string>((resolve) => {
     let stdout = ''
-    const child = spawn(command)
+    const child = spawn(command, options)
     child.stdout.on('data', chunk => stdout += chunk)
     child.on('close', () => resolve(stdout))
   })
@@ -66,17 +67,34 @@ function spawnAsync (command: string) {
 
 const startTime = new Date().toLocaleString()
 
-const commitTimePromise = spawnAsync('git log -1 --format="%ct"').then((stdout) => {
-  if (!stdout) return
-  return new Date(parseInt(stdout) * 1000).toLocaleString()
-}).catch<string>(noop)
+let commitTimePromise: Promise<string>
 
 const sendEventCounter = new WeakMap<App, number[]>()
 
 export const name = 'status'
 
-export async function apply (ctx: Context) {
+interface StatusOptions {
+  gitFolder?: string
+  refreshInterval?: number
+}
+
+const defaultOptions: StatusOptions = {
+  gitFolder: '',
+  refreshInterval: 1000,
+}
+
+export async function apply (ctx: Context, options: StatusOptions = {}) {
   const { app } = ctx
+  options = { ...defaultOptions, ...options }
+
+  if (!commitTimePromise) {
+    commitTimePromise = spawnAsync('git log -1 --format="%ct"', {
+      cwd: resolve(process.cwd(), options.gitFolder)
+    }).then((stdout) => {
+      if (!stdout) return
+      return new Date(parseInt(stdout) * 1000).toLocaleString()
+    }).catch<string>(noop)
+  }
 
   if (!sendEventCounter.has(app)) {
     sendEventCounter.set(app, new Array(61).fill(0))
@@ -91,7 +109,7 @@ export async function apply (ctx: Context) {
       timer = setInterval(() => {
         this.messages.unshift(0)
         this.messages.splice(-1, 1)
-      }, 1000)
+      }, options.refreshInterval)
     })
 
     app.receiver.on('before-disconnect', () => {
@@ -122,7 +140,7 @@ export async function apply (ctx: Context) {
           output += '无法连接'
         }
         return output
-      })
+      }).sort()
 
       const userCount = await ctx.database.getUserCount()
       const groupCount = await ctx.database.getGroupCount()
