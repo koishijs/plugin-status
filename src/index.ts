@@ -76,11 +76,13 @@ export const name = 'status'
 interface StatusOptions {
   gitFolder?: string
   refreshInterval?: number
+  sort?: (a: App, b: App) => number
 }
 
 const defaultOptions: StatusOptions = {
   gitFolder: '',
   refreshInterval: 1000,
+  sort: () => 1,
 }
 
 export async function apply (ctx: Context, options: StatusOptions = {}) {
@@ -89,7 +91,7 @@ export async function apply (ctx: Context, options: StatusOptions = {}) {
 
   if (!commitTimePromise) {
     commitTimePromise = spawnAsync('git log -1 --format="%ct"', {
-      cwd: resolve(process.cwd(), options.gitFolder)
+      cwd: resolve(process.cwd(), options.gitFolder),
     }).then((stdout) => {
       if (!stdout) return
       return new Date(parseInt(stdout) * 1000).toLocaleString()
@@ -107,8 +109,9 @@ export async function apply (ctx: Context, options: StatusOptions = {}) {
     let timer: NodeJS.Timeout
     app.receiver.on('before-connect', () => {
       timer = setInterval(() => {
-        this.messages.unshift(0)
-        this.messages.splice(-1, 1)
+        const messages = sendEventCounter.get(app)
+        messages.unshift(0)
+        messages.splice(-1, 1)
       }, options.refreshInterval)
     })
 
@@ -119,8 +122,11 @@ export async function apply (ctx: Context, options: StatusOptions = {}) {
 
   ctx.command('status', '查看机器人运行状态')
     .shortcut('你的状态', { prefix: true })
+    .shortcut('你的状况', { prefix: true })
+    .shortcut('运行情况', { prefix: true })
+    .shortcut('运行状态', { prefix: true })
     .action(async ({ meta }) => {
-      const data = await Promise.all(appList.map(async (app) => ({
+      const data = await Promise.all(appList.sort(options.sort).map(async (app) => ({
         app,
         good: await app.sender.getStatus().then(status => status.good, () => false),
       })))
@@ -140,7 +146,7 @@ export async function apply (ctx: Context, options: StatusOptions = {}) {
           output += '无法连接'
         }
         return output
-      }).sort()
+      })
 
       const userCount = await ctx.database.getUserCount()
       const groupCount = await ctx.database.getGroupCount()
